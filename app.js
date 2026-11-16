@@ -2,9 +2,10 @@
   'use strict';
 
   const STORAGE_KEY = 'rixu-planner-v1';
-  const APP_VERSION = 1;
+  const APP_VERSION = 3;
   const DAY_MS = 24 * 60 * 60 * 1000;
   const MAX_TASKS = 5000;
+  const MAX_RECORDS = 5000;
 
   const CATEGORIES = {
     life: {
@@ -33,6 +34,21 @@
     '2026-10-18': '重阳节'
   };
 
+  const WEEKDAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const TRAINING_TYPES = {
+    run: { name: '跑步', mark: '跑', unit: 'km', color: '#f27b35' },
+    strength: { name: '力量训练', mark: '力', unit: '', color: '#6c72d9' },
+    ride: { name: '骑行', mark: '骑', unit: 'km', color: '#2f9e69' },
+    swim: { name: '游泳', mark: '游', unit: 'km', color: '#2c95c9' },
+    other: { name: '其他运动', mark: '动', unit: '', color: '#7b8798' }
+  };
+  const ANNUAL_CATEGORIES = {
+    life: { name: '生活', mark: '生' },
+    study: { name: '学习', mark: '学' },
+    english: { name: '英语', mark: 'EN' },
+    other: { name: '其他', mark: '其' }
+  };
+
   const HOLIDAY_PERIODS_2026 = [
     { start: '2026-01-01', end: '2026-01-03', name: '元旦', kind: 'holiday' },
     { start: '2026-01-04', end: '2026-01-04', name: '元旦调休', kind: 'workday' },
@@ -54,6 +70,10 @@
 
   const elements = {
     brandHome: $('#brandHome'),
+    viewSwitcher: $('#viewSwitcher'),
+    calendarView: $('#calendarView'),
+    trainingView: $('#trainingView'),
+    annualView: $('#annualView'),
     homeMonthLabel: $('#homeMonthLabel'),
     homeMonthGrid: $('#homeMonthGrid'),
     homePrevMonth: $('#homePrevMonth'),
@@ -63,6 +83,51 @@
     planCount: $('#planCount'),
     categoryStack: $('#categoryStack'),
     addTask: $('#addTask'),
+    addButtonLabel: $('#addButtonLabel'),
+    trainingStatCount: $('#trainingStatCount'),
+    trainingStatMinutes: $('#trainingStatMinutes'),
+    trainingStatDistance: $('#trainingStatDistance'),
+    trainingWeekRange: $('#trainingWeekRange'),
+    weeklyPlanList: $('#weeklyPlanList'),
+    trainingLogList: $('#trainingLogList'),
+    editWeekPlan: $('#editWeekPlan'),
+    quickTrainingRecord: $('#quickTrainingRecord'),
+    trainingDialog: $('#trainingDialog'),
+    trainingForm: $('#trainingForm'),
+    trainingFormTitle: $('#trainingFormTitle'),
+    trainingId: $('#trainingId'),
+    trainingType: $('#trainingType'),
+    trainingDate: $('#trainingDate'),
+    trainingTime: $('#trainingTime'),
+    trainingDuration: $('#trainingDuration'),
+    trainingDistance: $('#trainingDistance'),
+    trainingNote: $('#trainingNote'),
+    deleteTraining: $('#deleteTraining'),
+    weeklyPlanDialog: $('#weeklyPlanDialog'),
+    weeklyPlanForm: $('#weeklyPlanForm'),
+    weeklyPlanFormTitle: $('#weeklyPlanFormTitle'),
+    weeklyWeekday: $('#weeklyWeekday'),
+    weeklyTitle: $('#weeklyTitle'),
+    weeklyTime: $('#weeklyTime'),
+    weeklyDuration: $('#weeklyDuration'),
+    weeklyNote: $('#weeklyNote'),
+    restWeeklyPlan: $('#restWeeklyPlan'),
+    annualYearTitle: $('#annualYearTitle'),
+    annualPrevYear: $('#annualPrevYear'),
+    annualNextYear: $('#annualNextYear'),
+    annualProgressText: $('#annualProgressText'),
+    annualProgressPercent: $('#annualProgressPercent'),
+    annualProgressBar: $('#annualProgressBar'),
+    annualFilters: $('#annualFilters'),
+    annualGoalList: $('#annualGoalList'),
+    annualGoalDialog: $('#annualGoalDialog'),
+    annualGoalForm: $('#annualGoalForm'),
+    annualGoalFormTitle: $('#annualGoalFormTitle'),
+    annualGoalId: $('#annualGoalId'),
+    annualGoalTitle: $('#annualGoalTitle'),
+    annualTargetDate: $('#annualTargetDate'),
+    annualGoalNote: $('#annualGoalNote'),
+    deleteAnnualGoal: $('#deleteAnnualGoal'),
     taskDialog: $('#taskDialog'),
     taskForm: $('#taskForm'),
     taskId: $('#taskId'),
@@ -86,6 +151,9 @@
   let today = dateKey(new Date());
   let selectedDate = today;
   let homeMonth = startOfMonth(parseDateKey(selectedDate));
+  let currentView = 'calendar';
+  let annualYear = new Date().getFullYear();
+  let annualFilter = 'all';
   let toastTimer = 0;
 
   function pad(value) {
@@ -175,7 +243,7 @@
   function cleanTask(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const category = ['life', 'sport', 'study'].includes(raw.category) ? raw.category : 'life';
-    const date = isValidDateKey(raw.date) ? raw.date : today;
+    const date = isValidDateKey(raw.date) ? raw.date : dateKey(new Date());
     const title = typeof raw.title === 'string' ? raw.title.trim().slice(0, 80) : '';
     if (!title) return null;
     const time = typeof raw.time === 'string' && /^\d{2}:\d{2}$/.test(raw.time) ? raw.time : '';
@@ -189,6 +257,71 @@
       done: Boolean(raw.done),
       createdAt: Number.isFinite(Number(raw.createdAt)) ? Number(raw.createdAt) : Date.now(),
       updatedAt: Number.isFinite(Number(raw.updatedAt)) ? Number(raw.updatedAt) : Date.now()
+    };
+  }
+
+  function cleanWeeklyTraining(raw) {
+    const list = Array.isArray(raw) ? raw : [];
+    return Array.from({ length: 7 }, (_, weekday) => {
+      const item = list.find(entry => Number(entry?.weekday) === weekday) || {};
+      const duration = Math.max(0, Math.min(1440, Number(item.duration) || 0));
+      return {
+        weekday,
+        title: typeof item.title === 'string' ? item.title.trim().slice(0, 60) : '',
+        time: typeof item.time === 'string' && /^\d{2}:\d{2}$/.test(item.time) ? item.time : '',
+        duration,
+        note: typeof item.note === 'string' ? item.note.trim().slice(0, 180) : ''
+      };
+    });
+  }
+
+  function cleanTrainingLog(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const fallbackDate = dateKey(new Date());
+    const date = isValidDateKey(raw.date) ? raw.date : fallbackDate;
+    const type = Object.hasOwn(TRAINING_TYPES, raw.type) ? raw.type : 'run';
+    const duration = Math.max(1, Math.min(1440, Math.round(Number(raw.duration) || 0)));
+    if (!duration) return null;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : uid(),
+      date,
+      time: typeof raw.time === 'string' && /^\d{2}:\d{2}$/.test(raw.time) ? raw.time : '',
+      type,
+      duration,
+      distance: Math.max(0, Math.min(1000, Number(raw.distance) || 0)),
+      note: typeof raw.note === 'string' ? raw.note.trim().slice(0, 240) : '',
+      createdAt: Number.isFinite(Number(raw.createdAt)) ? Number(raw.createdAt) : Date.now(),
+      updatedAt: Number.isFinite(Number(raw.updatedAt)) ? Number(raw.updatedAt) : Date.now()
+    };
+  }
+
+  function cleanAnnualGoal(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const title = typeof raw.title === 'string' ? raw.title.trim().slice(0, 100) : '';
+    if (!title) return null;
+    const nowYear = new Date().getFullYear();
+    const year = Math.max(2000, Math.min(2100, Number(raw.year) || nowYear));
+    const category = Object.hasOwn(ANNUAL_CATEGORIES, raw.category) ? raw.category : 'other';
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : uid(),
+      year,
+      category,
+      title,
+      targetDate: isValidDateKey(raw.targetDate) ? raw.targetDate : '',
+      note: typeof raw.note === 'string' ? raw.note.trim().slice(0, 300) : '',
+      done: Boolean(raw.done),
+      createdAt: Number.isFinite(Number(raw.createdAt)) ? Number(raw.createdAt) : Date.now(),
+      updatedAt: Number.isFinite(Number(raw.updatedAt)) ? Number(raw.updatedAt) : Date.now()
+    };
+  }
+
+  function createEmptyData() {
+    return {
+      version: APP_VERSION,
+      tasks: [],
+      trainingLogs: [],
+      weeklyTraining: cleanWeeklyTraining([]),
+      annualGoals: []
     };
   }
 
@@ -206,17 +339,31 @@
         seen.add(task.id);
         return true;
       });
-    return { version: APP_VERSION, tasks };
+    const trainingLogs = (Array.isArray(raw.trainingLogs) ? raw.trainingLogs : [])
+      .slice(0, MAX_RECORDS)
+      .map(cleanTrainingLog)
+      .filter(Boolean);
+    const annualGoals = (Array.isArray(raw.annualGoals) ? raw.annualGoals : [])
+      .slice(0, MAX_RECORDS)
+      .map(cleanAnnualGoal)
+      .filter(Boolean);
+    return {
+      version: APP_VERSION,
+      tasks,
+      trainingLogs,
+      weeklyTraining: cleanWeeklyTraining(raw.weeklyTraining),
+      annualGoals
+    };
   }
 
   function loadData() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { version: APP_VERSION, tasks: [] };
+      if (!raw) return createEmptyData();
       return normalizeData(JSON.parse(raw));
     } catch (error) {
       console.warn('无法读取本地计划数据：', error);
-      return { version: APP_VERSION, tasks: [] };
+      return createEmptyData();
     }
   }
 
@@ -263,6 +410,155 @@
   function renderAll() {
     renderHomeCalendar();
     renderPlans();
+    renderTraining();
+    renderAnnual();
+    updateViewState();
+  }
+
+  function updateViewState() {
+    const views = {
+      calendar: elements.calendarView,
+      training: elements.trainingView,
+      annual: elements.annualView
+    };
+    Object.entries(views).forEach(([view, element]) => {
+      element.hidden = view !== currentView;
+    });
+    $$('.view-tab', elements.viewSwitcher).forEach(button => {
+      const active = button.dataset.view === currentView;
+      button.classList.toggle('is-active', active);
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    const labels = {
+      calendar: '添加计划',
+      training: '添加训练记录',
+      annual: '添加年度事项'
+    };
+    elements.addButtonLabel.textContent = labels[currentView];
+  }
+
+  function setView(view) {
+    if (!['calendar', 'training', 'annual'].includes(view)) return;
+    currentView = view;
+    updateViewState();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function formatMinutes(minutes) {
+    const value = Math.max(0, Math.round(Number(minutes) || 0));
+    if (value < 60) return `${value} 分钟`;
+    const hours = Math.floor(value / 60);
+    const rest = value % 60;
+    return rest ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`;
+  }
+
+  function renderTraining() {
+    const weekStart = startOfWeek(parseDateKey(today));
+    const weekEnd = addDays(weekStart, 6);
+    const startKey = dateKey(weekStart);
+    const endKey = dateKey(weekEnd);
+    const weekLogs = appData.trainingLogs.filter(item => item.date >= startKey && item.date <= endKey);
+    const totalMinutes = weekLogs.reduce((sum, item) => sum + item.duration, 0);
+    const totalDistance = weekLogs.reduce((sum, item) => sum + item.distance, 0);
+    elements.trainingStatCount.textContent = `${weekLogs.length} 次`;
+    elements.trainingStatMinutes.textContent = formatMinutes(totalMinutes);
+    elements.trainingStatDistance.textContent = `${totalDistance.toFixed(totalDistance >= 100 ? 0 : 1)} km`;
+    elements.trainingWeekRange.textContent = `${weekStart.getMonth() + 1}.${weekStart.getDate()} — ${weekEnd.getMonth() + 1}.${weekEnd.getDate()}`;
+
+    const currentWeekday = (new Date().getDay() + 6) % 7;
+    elements.weeklyPlanList.innerHTML = appData.weeklyTraining.map((plan, index) => {
+      const isRest = !plan.title;
+      const isToday = index === currentWeekday;
+      return `
+        <article class="weekly-plan-row ${isToday ? 'is-today' : ''} ${isRest ? 'is-rest' : ''}">
+          <span class="weekly-day-badge"><small>${isToday ? '今天' : ' '}</small><strong>${WEEKDAY_NAMES[index]}</strong></span>
+          <div class="weekly-plan-copy">
+            <strong>${isRest ? '休息与恢复' : escapeHtml(plan.title)}</strong>
+            <span>${isRest ? '让身体有时间恢复' : `${plan.time ? `${plan.time} · ` : ''}${plan.duration ? formatMinutes(plan.duration) : '时长自定'}`}</span>
+            ${plan.note && !isRest ? `<small>${escapeHtml(plan.note)}</small>` : ''}
+          </div>
+          <button class="row-edit-button" type="button" data-action="edit-week-plan" data-weekday="${index}" aria-label="编辑${WEEKDAY_NAMES[index]}训练安排">编辑</button>
+        </article>
+      `;
+    }).join('');
+
+    const logs = [...appData.trainingLogs]
+      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+    if (!logs.length) {
+      elements.trainingLogList.innerHTML = `
+        <div class="empty-state">
+          <strong>还没有训练记录</strong>
+          <span>完成一次跑步或训练后，把时长和距离记在这里。</span>
+          <button type="button" data-action="add-training">添加第一条记录</button>
+        </div>
+      `;
+      return;
+    }
+    elements.trainingLogList.innerHTML = logs.slice(0, 30).map(item => {
+      const type = TRAINING_TYPES[item.type];
+      const date = parseDateKey(item.date);
+      const distance = item.distance ? ` · ${item.distance.toFixed(item.distance >= 100 ? 0 : 1)} km` : '';
+      return `
+        <article class="training-log-item" style="--training-color:${type.color}">
+          <span class="training-type-badge">${type.mark}</span>
+          <div class="training-log-copy">
+            <div class="training-log-title"><strong>${type.name}</strong><span>${formatMinutes(item.duration)}${distance}</span></div>
+            <small>${date.getMonth() + 1}月${date.getDate()}日 · ${weekdayName(date, 'short')}${item.time ? ` · ${item.time}` : ''}</small>
+            ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}
+          </div>
+          <button class="row-edit-button" type="button" data-action="edit-training" data-id="${escapeHtml(item.id)}" aria-label="编辑这条训练记录">编辑</button>
+        </article>
+      `;
+    }).join('');
+  }
+
+  function renderAnnual() {
+    elements.annualYearTitle.textContent = String(annualYear);
+    const yearGoals = appData.annualGoals.filter(goal => goal.year === annualYear);
+    const doneCount = yearGoals.filter(goal => goal.done).length;
+    const percent = yearGoals.length ? Math.round(doneCount / yearGoals.length * 100) : 0;
+    elements.annualProgressText.textContent = `${doneCount} / ${yearGoals.length} 已完成`;
+    elements.annualProgressPercent.textContent = `${percent}%`;
+    elements.annualProgressBar.style.width = `${percent}%`;
+
+    $$('[data-annual-filter]', elements.annualFilters).forEach(button => {
+      button.classList.toggle('is-active', button.dataset.annualFilter === annualFilter);
+    });
+
+    const visibleGoals = yearGoals
+      .filter(goal => annualFilter === 'all' || goal.category === annualFilter)
+      .sort((a, b) => Number(a.done) - Number(b.done) || (a.targetDate || '9999').localeCompare(b.targetDate || '9999') || a.createdAt - b.createdAt);
+
+    if (!visibleGoals.length) {
+      const message = yearGoals.length ? '这个分类还没有事项' : `${annualYear} 年还没有写下目标`;
+      elements.annualGoalList.innerHTML = `
+        <div class="empty-state annual-empty-state">
+          <strong>${message}</strong>
+          <span>可以记录生活安排、学习计划、英语目标或任何想完成的事。</span>
+          <button type="button" data-action="add-annual">添加年度事项</button>
+        </div>
+      `;
+      return;
+    }
+
+    elements.annualGoalList.innerHTML = visibleGoals.map(goal => {
+      const category = ANNUAL_CATEGORIES[goal.category];
+      const target = goal.targetDate ? `${parseDateKey(goal.targetDate).getMonth() + 1}月${parseDateKey(goal.targetDate).getDate()}日` : '';
+      return `
+        <article class="annual-goal-card ${goal.done ? 'is-done' : ''}" data-category="${goal.category}">
+          <button class="annual-check" type="button" data-action="toggle-annual" data-id="${escapeHtml(goal.id)}" aria-label="${goal.done ? '标记为未完成' : '标记为已完成'}：${escapeHtml(goal.title)}" aria-pressed="${goal.done ? 'true' : 'false'}">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3.5 8.2 2.7 2.7 6.3-6.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="annual-goal-copy">
+            <div class="annual-goal-meta"><span class="annual-category-mark">${category.mark}</span><span>${category.name}</span>${target ? `<span>目标 ${target}</span>` : ''}</div>
+            <h3>${escapeHtml(goal.title)}</h3>
+            ${goal.note ? `<p>${escapeHtml(goal.note)}</p>` : ''}
+          </div>
+          <button class="row-edit-button" type="button" data-action="edit-annual" data-id="${escapeHtml(goal.id)}" aria-label="编辑年度事项">编辑</button>
+        </article>
+      `;
+    }).join('');
   }
 
   function renderHomeCalendar() {
@@ -528,12 +824,193 @@
     }, 2100);
   }
 
+  function openTrainingForm({ record = null } = {}) {
+    elements.trainingForm.reset();
+    if (record) {
+      elements.trainingId.value = record.id;
+      elements.trainingType.value = record.type;
+      elements.trainingDate.value = record.date;
+      elements.trainingTime.value = record.time || '';
+      elements.trainingDuration.value = record.duration;
+      elements.trainingDistance.value = record.distance || '';
+      elements.trainingNote.value = record.note || '';
+      elements.trainingFormTitle.textContent = '编辑训练记录';
+      elements.deleteTraining.classList.remove('is-hidden');
+    } else {
+      elements.trainingId.value = '';
+      elements.trainingDate.value = today;
+      elements.trainingFormTitle.textContent = '添加训练记录';
+      elements.deleteTraining.classList.add('is-hidden');
+    }
+    openDialog(elements.trainingDialog);
+    window.setTimeout(() => elements.trainingDuration.focus(), 120);
+  }
+
+  function submitTrainingForm(event) {
+    event.preventDefault();
+    const duration = Math.max(1, Math.min(1440, Math.round(Number(elements.trainingDuration.value) || 0)));
+    if (!duration) {
+      showToast('请填写训练时长');
+      elements.trainingDuration.focus();
+      return;
+    }
+    const date = isValidDateKey(elements.trainingDate.value) ? elements.trainingDate.value : today;
+    const values = {
+      type: Object.hasOwn(TRAINING_TYPES, elements.trainingType.value) ? elements.trainingType.value : 'other',
+      date,
+      time: elements.trainingTime.value || '',
+      duration,
+      distance: Math.max(0, Math.min(1000, Number(elements.trainingDistance.value) || 0)),
+      note: elements.trainingNote.value.trim(),
+      updatedAt: Date.now()
+    };
+    const id = elements.trainingId.value;
+    const existing = appData.trainingLogs.find(item => item.id === id);
+    if (existing) {
+      Object.assign(existing, values);
+    } else {
+      appData.trainingLogs.push({ id: uid(), ...values, createdAt: Date.now() });
+    }
+    saveData();
+    closeDialog(elements.trainingDialog);
+    renderTraining();
+    showToast(existing ? '训练记录已更新' : '训练记录已保存');
+  }
+
+  function deleteTrainingRecord() {
+    const id = elements.trainingId.value;
+    const record = appData.trainingLogs.find(item => item.id === id);
+    if (!record) return;
+    if (!window.confirm('确定删除这条训练记录吗？')) return;
+    appData.trainingLogs = appData.trainingLogs.filter(item => item.id !== id);
+    saveData();
+    closeDialog(elements.trainingDialog);
+    renderTraining();
+    showToast('训练记录已删除');
+  }
+
+  function openWeeklyPlanForm(weekday) {
+    const index = Math.max(0, Math.min(6, Number(weekday)));
+    const plan = appData.weeklyTraining[index];
+    elements.weeklyPlanForm.reset();
+    elements.weeklyWeekday.value = String(index);
+    elements.weeklyTitle.value = plan.title;
+    elements.weeklyTime.value = plan.time;
+    elements.weeklyDuration.value = plan.duration || '';
+    elements.weeklyNote.value = plan.note;
+    elements.weeklyPlanFormTitle.textContent = `编辑${WEEKDAY_NAMES[index]}训练`;
+    openDialog(elements.weeklyPlanDialog);
+    window.setTimeout(() => elements.weeklyTitle.focus(), 120);
+  }
+
+  function saveWeeklyPlan({ rest = false } = {}) {
+    const index = Math.max(0, Math.min(6, Number(elements.weeklyWeekday.value)));
+    if (!rest && !elements.weeklyTitle.value.trim()) {
+      showToast('请填写训练内容，或选择设为休息日');
+      elements.weeklyTitle.focus();
+      return;
+    }
+    appData.weeklyTraining[index] = rest ? {
+      weekday: index,
+      title: '',
+      time: '',
+      duration: 0,
+      note: ''
+    } : {
+      weekday: index,
+      title: elements.weeklyTitle.value.trim(),
+      time: elements.weeklyTime.value || '',
+      duration: Math.max(0, Math.min(1440, Number(elements.weeklyDuration.value) || 0)),
+      note: elements.weeklyNote.value.trim()
+    };
+    saveData();
+    closeDialog(elements.weeklyPlanDialog);
+    renderTraining();
+    showToast(rest ? `${WEEKDAY_NAMES[index]}已设为休息日` : '每周训练安排已更新');
+  }
+
+  function openAnnualGoalForm({ goal = null } = {}) {
+    elements.annualGoalForm.reset();
+    const year = goal ? goal.year : annualYear;
+    elements.annualTargetDate.min = `${year}-01-01`;
+    elements.annualTargetDate.max = `${year}-12-31`;
+    if (goal) {
+      elements.annualGoalId.value = goal.id;
+      elements.annualGoalTitle.value = goal.title;
+      elements.annualTargetDate.value = goal.targetDate;
+      elements.annualGoalNote.value = goal.note;
+      const category = elements.annualGoalForm.querySelector(`input[name="annualCategory"][value="${goal.category}"]`);
+      if (category) category.checked = true;
+      elements.annualGoalFormTitle.textContent = '编辑年度事项';
+      elements.deleteAnnualGoal.classList.remove('is-hidden');
+    } else {
+      elements.annualGoalId.value = '';
+      elements.annualTargetDate.value = '';
+      elements.annualGoalFormTitle.textContent = `添加 ${year} 年度事项`;
+      elements.deleteAnnualGoal.classList.add('is-hidden');
+    }
+    openDialog(elements.annualGoalDialog);
+    window.setTimeout(() => elements.annualGoalTitle.focus(), 120);
+  }
+
+  function submitAnnualGoal(event) {
+    event.preventDefault();
+    const title = elements.annualGoalTitle.value.trim();
+    if (!title) {
+      showToast('先写下想完成的事项');
+      elements.annualGoalTitle.focus();
+      return;
+    }
+    const id = elements.annualGoalId.value;
+    const existing = appData.annualGoals.find(item => item.id === id);
+    const categoryInput = elements.annualGoalForm.querySelector('input[name="annualCategory"]:checked');
+    const values = {
+      year: existing ? existing.year : annualYear,
+      category: categoryInput ? categoryInput.value : 'other',
+      title,
+      targetDate: isValidDateKey(elements.annualTargetDate.value) ? elements.annualTargetDate.value : '',
+      note: elements.annualGoalNote.value.trim(),
+      updatedAt: Date.now()
+    };
+    if (existing) Object.assign(existing, values);
+    else appData.annualGoals.push({ id: uid(), ...values, done: false, createdAt: Date.now() });
+    saveData();
+    closeDialog(elements.annualGoalDialog);
+    renderAnnual();
+    showToast(existing ? '年度事项已更新' : '年度事项已添加');
+  }
+
+  function deleteAnnualGoal() {
+    const id = elements.annualGoalId.value;
+    const goal = appData.annualGoals.find(item => item.id === id);
+    if (!goal) return;
+    if (!window.confirm(`确定删除“${goal.title}”吗？`)) return;
+    appData.annualGoals = appData.annualGoals.filter(item => item.id !== id);
+    saveData();
+    closeDialog(elements.annualGoalDialog);
+    renderAnnual();
+    showToast('年度事项已删除');
+  }
+
+  function toggleAnnualGoal(id) {
+    const goal = appData.annualGoals.find(item => item.id === id);
+    if (!goal) return;
+    goal.done = !goal.done;
+    goal.updatedAt = Date.now();
+    saveData();
+    renderAnnual();
+    showToast(goal.done ? '完成一件年度事项' : '已恢复为未完成');
+  }
+
   function exportBackup() {
     const payload = {
       app: '日序',
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
-      tasks: appData.tasks
+      tasks: appData.tasks,
+      trainingLogs: appData.trainingLogs,
+      weeklyTraining: appData.weeklyTraining,
+      annualGoals: appData.annualGoals
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -553,7 +1030,8 @@
       const text = await file.text();
       const parsed = JSON.parse(text);
       const nextData = normalizeData(parsed);
-      if (!window.confirm(`将导入 ${nextData.tasks.length} 项计划，并覆盖当前设备上的全部数据。要继续吗？`)) {
+      const totalItems = nextData.tasks.length + nextData.trainingLogs.length + nextData.annualGoals.length;
+      if (!window.confirm(`将导入 ${totalItems} 项计划、训练和年度事项，并覆盖当前设备上的全部数据。要继续吗？`)) {
         elements.importData.value = '';
         return;
       }
@@ -562,7 +1040,7 @@
       selectedDate = today;
       renderAll();
       closeDialog(elements.settingsDialog);
-      showToast(`已导入 ${appData.tasks.length} 项计划`);
+      showToast(`已导入 ${totalItems} 项内容`);
     } catch (error) {
       console.error('导入失败：', error);
       showToast(error.message || '导入失败，请检查备份文件');
@@ -572,16 +1050,17 @@
   }
 
   function clearAllData() {
-    if (!appData.tasks.length) {
-      showToast('现在没有可清除的计划');
+    const totalItems = appData.tasks.length + appData.trainingLogs.length + appData.annualGoals.length;
+    if (!totalItems) {
+      showToast('现在没有可清除的内容');
       return;
     }
-    if (!window.confirm(`确定清除全部 ${appData.tasks.length} 项计划吗？此操作无法撤销，建议先导出备份。`)) return;
-    appData = { version: APP_VERSION, tasks: [] };
+    if (!window.confirm(`确定清除全部 ${totalItems} 项计划、训练和年度事项吗？此操作无法撤销，建议先导出备份。`)) return;
+    appData = createEmptyData();
     saveData();
     closeDialog(elements.settingsDialog);
     renderAll();
-    showToast('全部计划已清除');
+    showToast('全部内容已清除');
   }
 
   function updateInstallTip() {
@@ -634,8 +1113,81 @@
   elements.goToday.addEventListener('click', goToToday);
   elements.brandHome.addEventListener('click', event => {
     event.preventDefault();
+    setView('calendar');
     goToToday();
   });
+
+  // Main navigation between calendar, training, and yearly goals.
+  elements.viewSwitcher.addEventListener('click', event => {
+    const tab = event.target.closest('[data-view]');
+    if (tab) setView(tab.dataset.view);
+  });
+
+  // Training screen interactions.
+  elements.editWeekPlan.addEventListener('click', () => {
+    const currentWeekday = (new Date().getDay() + 6) % 7;
+    openWeeklyPlanForm(currentWeekday);
+  });
+  elements.quickTrainingRecord.addEventListener('click', () => openTrainingForm());
+  elements.weeklyPlanList.addEventListener('click', event => {
+    const target = event.target.closest('[data-action="edit-week-plan"]');
+    if (target) openWeeklyPlanForm(target.dataset.weekday);
+  });
+  elements.trainingLogList.addEventListener('click', event => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    if (target.dataset.action === 'add-training') {
+      openTrainingForm();
+      return;
+    }
+    if (target.dataset.action === 'edit-training') {
+      const record = appData.trainingLogs.find(item => item.id === target.dataset.id);
+      if (record) openTrainingForm({ record });
+    }
+  });
+  elements.trainingForm.addEventListener('submit', submitTrainingForm);
+  elements.deleteTraining.addEventListener('click', deleteTrainingRecord);
+  elements.weeklyPlanForm.addEventListener('submit', event => {
+    event.preventDefault();
+    saveWeeklyPlan();
+  });
+  elements.restWeeklyPlan.addEventListener('click', () => saveWeeklyPlan({ rest: true }));
+
+  // Annual goal interactions.
+  elements.annualPrevYear.addEventListener('click', () => {
+    annualYear -= 1;
+    annualFilter = 'all';
+    renderAnnual();
+  });
+  elements.annualNextYear.addEventListener('click', () => {
+    annualYear += 1;
+    annualFilter = 'all';
+    renderAnnual();
+  });
+  elements.annualFilters.addEventListener('click', event => {
+    const button = event.target.closest('[data-annual-filter]');
+    if (!button) return;
+    annualFilter = button.dataset.annualFilter;
+    renderAnnual();
+  });
+  elements.annualGoalList.addEventListener('click', event => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    if (target.dataset.action === 'add-annual') {
+      openAnnualGoalForm();
+      return;
+    }
+    if (target.dataset.action === 'toggle-annual') {
+      toggleAnnualGoal(target.dataset.id);
+      return;
+    }
+    if (target.dataset.action === 'edit-annual') {
+      const goal = appData.annualGoals.find(item => item.id === target.dataset.id);
+      if (goal) openAnnualGoalForm({ goal });
+    }
+  });
+  elements.annualGoalForm.addEventListener('submit', submitAnnualGoal);
+  elements.deleteAnnualGoal.addEventListener('click', deleteAnnualGoal);
 
   // Plan interactions.
   elements.categoryStack.addEventListener('click', event => {
@@ -656,7 +1208,17 @@
     }
   });
 
-  elements.addTask.addEventListener('click', () => openTaskForm({ date: selectedDate }));
+  elements.addTask.addEventListener('click', () => {
+    if (currentView === 'training') {
+      openTrainingForm();
+      return;
+    }
+    if (currentView === 'annual') {
+      openAnnualGoalForm();
+      return;
+    }
+    openTaskForm({ date: selectedDate });
+  });
   elements.taskForm.addEventListener('submit', submitTask);
   elements.deleteTask.addEventListener('click', deleteCurrentTask);
   elements.taskTitle.addEventListener('input', () => elements.taskTitle.classList.remove('is-invalid'));
@@ -669,7 +1231,7 @@
     });
   });
 
-  [elements.taskDialog, elements.settingsDialog].forEach(dialog => {
+  [elements.taskDialog, elements.trainingDialog, elements.weeklyPlanDialog, elements.annualGoalDialog, elements.settingsDialog].forEach(dialog => {
     dialog.addEventListener('click', event => {
       if (event.target === dialog) closeDialog(dialog);
     });

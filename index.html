@@ -43,6 +43,22 @@
     </header>
 
     <main>
+      <nav class="view-switcher" id="viewSwitcher" aria-label="主要功能">
+        <button class="view-tab is-active" type="button" data-view="calendar" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span>日历</span>
+        </button>
+        <button class="view-tab" type="button" data-view="training">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.4 2.7 5.6 13.1h5.2l-.9 8.2 7.9-10.6h-5.1l.7-8Z" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/></svg>
+          <span>训练</span>
+        </button>
+        <button class="view-tab" type="button" data-view="annual">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m15.5 7 2-2 2 2M17.5 5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>年度</span>
+        </button>
+      </nav>
+
+      <div class="app-view" id="calendarView">
       <section class="month-calendar" aria-labelledby="homeMonthLabel">
         <div class="calendar-header">
           <h2 id="homeMonthLabel">2026年11月</h2>
@@ -76,6 +92,90 @@
         </div>
         <div class="category-stack" id="categoryStack"></div>
       </section>
+      </div>
+
+      <section class="app-view training-view" id="trainingView" aria-labelledby="trainingTitle" hidden>
+        <div class="page-heading">
+          <div>
+            <span class="section-kicker">TRAINING</span>
+            <h1 id="trainingTitle">训练计划</h1>
+          </div>
+          <button class="secondary-pill" id="editWeekPlan" type="button">编辑周计划</button>
+        </div>
+
+        <div class="stat-grid">
+          <article class="stat-card">
+            <span>本周训练</span>
+            <strong id="trainingStatCount">0 次</strong>
+          </article>
+          <article class="stat-card">
+            <span>累计时长</span>
+            <strong id="trainingStatMinutes">0 分钟</strong>
+          </article>
+          <article class="stat-card">
+            <span>累计距离</span>
+            <strong id="trainingStatDistance">0 km</strong>
+          </article>
+        </div>
+
+        <section class="glass-panel weekly-plan-panel" aria-labelledby="weeklyPlanHeading">
+          <div class="section-heading">
+            <div>
+              <h2 id="weeklyPlanHeading">每周训练安排</h2>
+            </div>
+            <span class="section-count" id="trainingWeekRange"></span>
+          </div>
+          <div class="weekly-plan-list" id="weeklyPlanList"></div>
+        </section>
+
+        <section class="glass-panel training-log-panel" aria-labelledby="trainingLogHeading">
+          <div class="section-heading">
+            <div>
+              <h2 id="trainingLogHeading">训练记录</h2>
+            </div>
+            <button class="inline-add-button" id="quickTrainingRecord" type="button">＋ 添加记录</button>
+          </div>
+          <div class="training-log-list" id="trainingLogList"></div>
+        </section>
+      </section>
+
+      <section class="app-view annual-view" id="annualView" aria-labelledby="annualTitle" hidden>
+        <div class="page-heading annual-heading">
+          <div>
+            <span class="section-kicker">YEARLY GOALS</span>
+            <h1 id="annualTitle"><span id="annualYearTitle">2026</span> 年度计划</h1>
+          </div>
+          <div class="year-nav">
+            <button class="mini-button" id="annualPrevYear" type="button" aria-label="上一年">
+              <svg viewBox="0 0 20 20" fill="none"><path d="m12.5 4.5-5 5.5 5 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="mini-button" id="annualNextYear" type="button" aria-label="下一年">
+              <svg viewBox="0 0 20 20" fill="none"><path d="m7.5 4.5 5 5.5-5 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <section class="annual-progress-card" aria-label="年度完成进度">
+          <div class="annual-progress-copy">
+            <div>
+              <span class="section-kicker">PROGRESS</span>
+              <strong id="annualProgressText">0 / 0 已完成</strong>
+            </div>
+            <span id="annualProgressPercent">0%</span>
+          </div>
+          <div class="annual-progress-track"><i id="annualProgressBar"></i></div>
+        </section>
+
+        <div class="annual-filters" id="annualFilters" aria-label="年度事项分类">
+          <button class="is-active" type="button" data-annual-filter="all">全部</button>
+          <button type="button" data-annual-filter="life">生活</button>
+          <button type="button" data-annual-filter="study">学习</button>
+          <button type="button" data-annual-filter="english">英语</button>
+          <button type="button" data-annual-filter="other">其他</button>
+        </div>
+
+        <div class="annual-goal-list" id="annualGoalList"></div>
+      </section>
 
       <footer class="app-footer">
         <span>日序</span>
@@ -90,7 +190,7 @@
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      添加计划
+      <span id="addButtonLabel">添加计划</span>
     </button>
   </div>
 
@@ -171,6 +271,155 @@
     </form>
   </dialog>
 
+  <dialog class="sheet training-dialog" id="trainingDialog">
+    <form class="sheet-form" id="trainingForm" method="dialog" novalidate>
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <div>
+          <span class="section-kicker">TRAINING LOG</span>
+          <h2 id="trainingFormTitle">添加训练记录</h2>
+        </div>
+        <button class="icon-button close-button" type="button" data-close="trainingDialog" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <input type="hidden" id="trainingId">
+
+      <div class="field">
+        <label for="trainingType">训练类型</label>
+        <select id="trainingType" required>
+          <option value="run">跑步</option>
+          <option value="strength">力量训练</option>
+          <option value="ride">骑行</option>
+          <option value="swim">游泳</option>
+          <option value="other">其他运动</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="trainingDate">日期</label>
+          <input id="trainingDate" type="date" required>
+        </div>
+        <div class="field">
+          <label for="trainingTime">开始时间 <span class="optional">选填</span></label>
+          <input id="trainingTime" type="time">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="trainingDuration">训练时长（分钟）</label>
+          <input id="trainingDuration" type="number" min="1" max="1440" inputmode="numeric" placeholder="例如：30" required>
+        </div>
+        <div class="field">
+          <label for="trainingDistance">距离（公里）<span class="optional">选填</span></label>
+          <input id="trainingDistance" type="number" min="0" max="1000" step="0.01" inputmode="decimal" placeholder="例如：5.2">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="trainingNote">训练感受 / 备注 <span class="optional">选填</span></label>
+        <textarea id="trainingNote" rows="3" maxlength="240" placeholder="配速、路线、组数或身体感受"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="danger-button" id="deleteTraining" type="button">删除</button>
+        <span class="form-spacer"></span>
+        <button class="secondary-button" type="button" data-close="trainingDialog">取消</button>
+        <button class="primary-button" type="submit">保存记录</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet weekly-dialog" id="weeklyPlanDialog">
+    <form class="sheet-form" id="weeklyPlanForm" method="dialog" novalidate>
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <div>
+          <span class="section-kicker">WEEKLY PLAN</span>
+          <h2 id="weeklyPlanFormTitle">编辑训练安排</h2>
+        </div>
+        <button class="icon-button close-button" type="button" data-close="weeklyPlanDialog" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <input type="hidden" id="weeklyWeekday">
+      <div class="field">
+        <label for="weeklyTitle">训练内容</label>
+        <input id="weeklyTitle" type="text" maxlength="60" placeholder="例如：轻松跑、间歇跑、力量训练">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="weeklyTime">开始时间 <span class="optional">选填</span></label>
+          <input id="weeklyTime" type="time">
+        </div>
+        <div class="field">
+          <label for="weeklyDuration">预计时长（分钟）<span class="optional">选填</span></label>
+          <input id="weeklyDuration" type="number" min="1" max="1440" inputmode="numeric" placeholder="30">
+        </div>
+      </div>
+      <div class="field">
+        <label for="weeklyNote">备注 <span class="optional">选填</span></label>
+        <textarea id="weeklyNote" rows="2" maxlength="180" placeholder="本周目标、配速或需要准备的装备"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="danger-button" id="restWeeklyPlan" type="button">设为休息日</button>
+        <span class="form-spacer"></span>
+        <button class="secondary-button" type="button" data-close="weeklyPlanDialog">取消</button>
+        <button class="primary-button" type="submit">保存安排</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet annual-dialog" id="annualGoalDialog">
+    <form class="sheet-form" id="annualGoalForm" method="dialog" novalidate>
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <div>
+          <span class="section-kicker">YEARLY GOAL</span>
+          <h2 id="annualGoalFormTitle">添加年度事项</h2>
+        </div>
+        <button class="icon-button close-button" type="button" data-close="annualGoalDialog" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <input type="hidden" id="annualGoalId">
+
+      <div class="field">
+        <label for="annualGoalTitle">今年想完成什么</label>
+        <input id="annualGoalTitle" type="text" maxlength="100" placeholder="例如：读完 12 本书、英语口语达到日常交流" required>
+      </div>
+
+      <fieldset class="field annual-category-field">
+        <legend>属于哪一类</legend>
+        <div class="annual-category-picker">
+          <label class="annual-category-option life"><input type="radio" name="annualCategory" value="life" checked><span>生活</span></label>
+          <label class="annual-category-option study"><input type="radio" name="annualCategory" value="study"><span>学习</span></label>
+          <label class="annual-category-option english"><input type="radio" name="annualCategory" value="english"><span>英语</span></label>
+          <label class="annual-category-option other"><input type="radio" name="annualCategory" value="other"><span>其他</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="annualTargetDate">目标日期 <span class="optional">选填</span></label>
+        <input id="annualTargetDate" type="date">
+      </div>
+
+      <div class="field">
+        <label for="annualGoalNote">备注 <span class="optional">选填</span></label>
+        <textarea id="annualGoalNote" rows="3" maxlength="300" placeholder="给自己一个清晰、可执行的目标描述"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="danger-button" id="deleteAnnualGoal" type="button">删除</button>
+        <span class="form-spacer"></span>
+        <button class="secondary-button" type="button" data-close="annualGoalDialog">取消</button>
+        <button class="primary-button" type="submit">保存事项</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog class="sheet settings-dialog" id="settingsDialog">
     <div class="sheet-body">
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -189,7 +438,7 @@
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.6 2.9 8 7 10 4.1-2 7-5.4 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <div>
-          <strong>你的计划只保存在这台设备</strong>
+          <strong>你的计划、训练和年度目标只保存在这台设备</strong>
           <p>不会上传云端。清除浏览器数据前，请先导出备份。</p>
         </div>
       </div>
@@ -218,7 +467,7 @@
         <p id="installTipText">在手机浏览器菜单中选择“添加到主屏幕”，以后就能像 App 一样快速打开。</p>
       </div>
 
-      <button class="clear-data-button" id="clearData" type="button">清除全部计划</button>
+      <button class="clear-data-button" id="clearData" type="button">清除全部内容</button>
       <p class="version-note">日序 1.0 · 本地优先</p>
     </div>
   </dialog>

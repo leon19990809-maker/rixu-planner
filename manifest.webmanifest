@@ -1,7 +1,7 @@
 {
   "name": "日序 · 我的每日计划",
   "short_name": "日序",
-  "description": "按日期记录生活、体育与学习计划，自动提醒未来安排。",
+  "description": "记录每日计划、每周训练和年度目标，所有数据保存在手机本地。",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
